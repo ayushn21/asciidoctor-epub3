@@ -1289,19 +1289,8 @@ document.addEventListener('DOMContentLoaded', function(event, reader) {
 
       def add_theme_assets doc
         format = @format
-        workdir = if doc.attr? 'epub3-stylesdir'
-                    stylesdir = doc.attr 'epub3-stylesdir'
-                    # FIXME: make this work for Windows paths!!
-                    if stylesdir.start_with? '/'
-                      stylesdir
-                    else
-                      docdir = doc.attr 'docdir', '.'
-                      docdir = '.' if docdir.empty?
-                      ::File.join docdir, stylesdir
-                    end
-                  else
-                    ::File.join DATA_DIR, 'styles'
-                  end
+        workdir = dir_for_attribute(doc, 'epub3-stylesdir') ||
+                    ::File.join(DATA_DIR, 'styles')
 
         # TODO: improve design/UX of custom theme functionality, including custom fonts
 
@@ -1329,7 +1318,10 @@ document.addEventListener('DOMContentLoaded', function(event, reader) {
           end
         end
 
-        font_files, font_css = select_fonts ::File.join(DATA_DIR, 'styles/epub3-fonts.css'), (doc.attr 'scripts', 'latin')
+        workdir = dir_for_attribute(doc, 'epub3-fontsdir') ||
+                    ::File.join(DATA_DIR, 'styles')
+
+        font_files, font_css = select_fonts ::File.join(workdir, 'epub3-fonts.css'), (doc.attr 'scripts', 'latin')
         @book.add_item 'styles/epub3-fonts.css', content: font_css
         unless font_files.empty?
           # NOTE: metadata property in oepbs package manifest doesn't work; must use proprietary iBooks file instead
@@ -1342,7 +1334,7 @@ document.addEventListener('DOMContentLoaded', function(event, reader) {
 </display_options>'.to_ios unless format == :kf8
 
           font_files.each do |font_file|
-            @book.add_item font_file, content: File.join(DATA_DIR, font_file)
+            @book.add_item font_file, content: File.join(workdir, font_file)
           end
         end
         nil
@@ -1763,6 +1755,18 @@ body > svg {
       # Handles asciidoctor 1.5.6 quirk when role can be parent
       def role_valid_class? role
         role.is_a? String
+      end
+
+      def dir_for_attribute doc, attr
+        dir = doc.attr 'epub3-stylesdir'
+        # FIXME: make this work for Windows paths!!
+        if dir.start_with? '/'
+          dir
+        else
+          docdir = doc.attr 'docdir', '.'
+          docdir = '.' if docdir.empty?
+          ::File.join docdir, dir
+        end
       end
     end
 
